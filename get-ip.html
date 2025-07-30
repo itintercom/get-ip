@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>VPN IP</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 body { font-family: sans-serif; text-align:center; margin-top: 40px; }
 button { padding: 10px 20px; font-size: 16px; margin-top: 20px; cursor:pointer; }
@@ -12,9 +13,7 @@ button { padding: 10px 20px; font-size: 16px; margin-top: 20px; cursor:pointer; 
 <body>
 <h3>Определение IP...</h3>
 <div id="result">⏳ Получаю IP...</div>
-<a id="sendBtn" href="#" style="display:none;">
-  <button>📤 Отправить IP</button>
-</a>
+<button id="sendBtn" style="display:none;">📤 Отправить IP</button>
 <script>
 let ip = "";
 fetch('https://api.ipify.org?format=json')
@@ -22,15 +21,16 @@ fetch('https://api.ipify.org?format=json')
   .then(d=>{
     ip = d.ip;
     document.getElementById('result').innerText='Ваш IP: '+ip;
-    // Ссылка для отправки в бот
-    const botname = "intercomIPbot"; // замените на username вашего бота
-    const link = `https://t.me/${botname}?start=sendip_${ip}`;
-    document.getElementById('sendBtn').href = link;
     document.getElementById('sendBtn').style.display = "inline-block";
-  })
-  .catch(e=>{
-    document.getElementById('result').innerText='Ошибка: '+e;
   });
+
+document.getElementById('sendBtn').onclick = ()=>{
+  if (window.Telegram && Telegram.WebApp) {
+    console.log("📤 Отправляю IP в чат:", ip);
+    Telegram.WebApp.sendData("/sendip " + ip);
+    Telegram.WebApp.close();  // закрыть окно
+  }
+};
 </script>
 </body>
 </html>
