@@ -1,31 +1,32 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>get-ip</title>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VPN IP</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-  <h3>Определение IP...</h3>
-  <div id="result">⏳ Получаю IP...</div>
-  <script>
-    console.log("✅ Telegram WebApp загружен:", window.Telegram);
-    fetch('https://api.ipify.org?format=json')
-      .then(r => r.json())
-      .then(d => {
-        document.getElementById('result').innerText = "Ваш IP: " + d.ip;
-        if (window.Telegram && Telegram.WebApp) {
-          console.log("📤 Отправляю IP в бота:", d.ip);
-          Telegram.WebApp.sendData(d.ip);
-        } else {
-          console.log("⚠️ Telegram WebApp не найден");
-        }
-      })
-      .catch(err => {
-        document.getElementById('result').innerText = "Ошибка: " + err;
-        console.error("❌ Ошибка получения IP:", err);
-      });
-  </script>
+<h3>Определение IP...</h3>
+<div id="result">⏳ Получаю...</div>
+<script>
+console.log("✅ Telegram WebApp объект:", Telegram?.WebApp);
+fetch('https://api.ipify.org?format=json')
+.then(r=>r.json())
+.then(d=>{
+  document.getElementById('result').innerText='Ваш IP: '+d.ip;
+  console.log("📤 Отправляю данные в бота:", d.ip);
+  try {
+    Telegram.WebApp.sendData(d.ip);
+    console.log("✅ sendData вызван");
+  } catch(e) {
+    console.error("❌ Ошибка sendData", e);
+  }
+})
+.catch(e=>{
+  document.getElementById('result').innerText='Ошибка: '+e;
+  console.error("Ошибка fetch", e);
+});
+</script>
 </body>
 </html>
