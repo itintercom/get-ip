@@ -7,32 +7,51 @@
 </head>
 <body>
     <h2>📡 Определение IP...</h2>
+    <div id="debug"></div>
     
     <script>
         // Инициализация Telegram WebApp
         const tg = window.Telegram.WebApp;
         tg.ready();
+        
+        document.getElementById('debug').innerHTML = '<p>WebApp инициализирован</p>';
 
         // Получаем IP
         fetch('https://api.ipify.org?format=json')
-            .then(r => r.json())
+            .then(r => {
+                document.getElementById('debug').innerHTML += '<p>Получен ответ от ipify</p>';
+                return r.json();
+            })
             .then(data => {
+                document.getElementById('debug').innerHTML += '<p>Данные IP получены: ' + data.ip + '</p>';
+                
                 // Отправляем данные через официальный WebApp API
                 const ipData = {
-                    ip: data.ip
+                    ip: data.ip,
+                    timestamp: new Date().toISOString()
                 };
                 
-                tg.sendData(JSON.stringify(ipData));
+                document.getElementById('debug').innerHTML += '<p>Отправляем данные через sendData...</p>';
                 
-                document.body.innerHTML = '<h2>✅ IP отправлен в Telegram!</h2><p>' + data.ip + '</p>';
+                try {
+                    tg.sendData(JSON.stringify(ipData));
+                    document.body.innerHTML = '<h2>✅ IP отправлен в Telegram!</h2><p>' + data.ip + '</p><p>Проверьте чат бота</p>';
+                } catch (error) {
+                    document.body.innerHTML = '<h2>❌ Ошибка отправки: ' + error.message + '</h2>';
+                }
                 
-                // Закрываем через 2 секунды
+                // Закрываем через 3 секунды
                 setTimeout(() => {
-                    tg.close();
-                }, 2000);
+                    try {
+                        tg.close();
+                    } catch (error) {
+                        console.log('Ошибка закрытия:', error);
+                    }
+                }, 3000);
             })
             .catch(error => {
-                document.body.innerHTML = '<h2>❌ Ошибка: ' + error.message + '</h2>';
+                document.body.innerHTML = '<h2>❌ Ошибка получения IP: ' + error.message + '</h2>';
+                document.getElementById('debug').innerHTML += '<p>Ошибка: ' + error.message + '</p>';
             });
     </script>
 </body>
