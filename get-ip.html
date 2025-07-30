@@ -8,32 +8,41 @@
 <style>
 body { font-family: sans-serif; text-align:center; margin-top: 40px; }
 button { padding: 10px 20px; font-size: 16px; margin-top: 20px; cursor:pointer; }
+#hint {display:none; color:#555;}
 </style>
 </head>
 <body>
 <h3>Определение IP...</h3>
 <div id="result">⏳ Получаю IP...</div>
-<p id="hint" style="display:none; color:#555;">
-📢 После закрытия окна нажмите "Отправить", чтобы передать IP боту.
-</p>
+<p id="hint"></p>
 <button id="sendBtn" style="display:none;">📤 Отправить IP</button>
 
 <script>
+window.addEventListener('DOMContentLoaded', () => {
+  if (window.Telegram && Telegram.WebApp) {
+    Telegram.WebApp.ready();
+  }
+});
+
 let ip = "";
-const botname = "intercomIPbot"; // замените на имя вашего бота
+const botname = "intercomIPbot";
 
 fetch('https://api.ipify.org?format=json')
   .then(r=>r.json())
   .then(d=>{
     ip = d.ip;
     document.getElementById('result').innerText='Ваш IP: '+ip;
+    const hintEl = document.getElementById('hint');
+    hintEl.innerHTML = '📢 После закрытия окна нажмите "Отправить", чтобы передать IP боту.';
+    hintEl.style.display = "block";
     document.getElementById('sendBtn').style.display = "inline-block";
-    document.getElementById('hint').style.display = "block";
   });
 
 document.getElementById('sendBtn').onclick = ()=>{
   const link = `https://t.me/${botname}?startapp=sendip_${ip}`;
-  Telegram.WebApp.close();
+  if (window.Telegram && Telegram.WebApp) {
+    Telegram.WebApp.close();
+  }
   setTimeout(()=>{ window.location.href = link; }, 400);
 };
 </script>
