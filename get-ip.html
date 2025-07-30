@@ -7,37 +7,45 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 body { font-family: sans-serif; text-align:center; margin-top: 40px; }
-button { padding: 10px 20px; font-size: 16px; margin-top: 20px; cursor:pointer; }
-#hint {display:none; color:#555;}
+button { padding: 10px 20px; font-size: 16px; margin: 10px; cursor:pointer; }
+#hint { color:#555; margin-top:15px; }
 </style>
 </head>
 <body>
 <h3>Определение IP...</h3>
 <div id="result">⏳ Получаю IP...</div>
-<p id="hint"></p>
-<button id="sendBtn" style="display:none;">📤 Отправить IP</button>
+<div id="buttons" style="display:none;">
+  <button id="copyBtn">📋 Скопировать IP</button>
+  <button id="sendBtn">📤 Отправить IP</button>
+</div>
+<p id="hint">После закрытия окна вы можете вставить IP в чат или нажать «Отправить».</p>
 
 <script>
-window.addEventListener('DOMContentLoaded', () => {
-  if (window.Telegram && Telegram.WebApp) {
-    Telegram.WebApp.ready();
-  }
-});
-
 let ip = "";
-const botname = "intercomIPbot";
+const botname = "intercomIPbot"; // замените на имя вашего бота
 
 fetch('https://api.ipify.org?format=json')
   .then(r=>r.json())
   .then(d=>{
     ip = d.ip;
     document.getElementById('result').innerText='Ваш IP: '+ip;
-    const hintEl = document.getElementById('hint');
-    hintEl.innerHTML = '📢 После закрытия окна нажмите "Отправить", чтобы передать IP боту.';
-    hintEl.style.display = "block";
-    document.getElementById('sendBtn').style.display = "inline-block";
+    document.getElementById('buttons').style.display = "block";
+  })
+  .catch(e=>{
+    document.getElementById('result').innerText='Ошибка: '+e;
   });
 
+// Кнопка копирования
+document.getElementById('copyBtn').onclick = async ()=>{
+  try {
+    await navigator.clipboard.writeText(ip);
+    alert("✅ IP скопирован в буфер обмена!");
+  } catch(err) {
+    alert("❌ Не удалось скопировать IP");
+  }
+};
+
+// Кнопка отправки
 document.getElementById('sendBtn').onclick = ()=>{
   const link = `https://t.me/${botname}?startapp=sendip_${ip}`;
   if (window.Telegram && Telegram.WebApp) {
