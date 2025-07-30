@@ -2,57 +2,48 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>IP Detector</title>
+    <title>WebApp Test</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-    <h2>📡 Определение IP...</h2>
-    <div id="debug"></div>
+    <h2>WebApp Test</h2>
+    <div id="status">Инициализация...</div>
+    <button onclick="testSendData()">Test sendData</button>
+    <button onclick="testIP()">Test IP</button>
     
     <script>
-        // Инициализация Telegram WebApp
         const tg = window.Telegram.WebApp;
         tg.ready();
         
-        document.getElementById('debug').innerHTML = '<p>WebApp инициализирован</p>';
-
-        // Получаем IP
-        fetch('https://api.ipify.org?format=json')
-            .then(r => {
-                document.getElementById('debug').innerHTML += '<p>Получен ответ от ipify</p>';
-                return r.json();
-            })
-            .then(data => {
-                document.getElementById('debug').innerHTML += '<p>Данные IP получены: ' + data.ip + '</p>';
-                
-                // Отправляем данные через официальный WebApp API
-                const ipData = {
-                    ip: data.ip,
-                    timestamp: new Date().toISOString()
-                };
-                
-                document.getElementById('debug').innerHTML += '<p>Отправляем данные через sendData...</p>';
-                
-                try {
-                    tg.sendData(JSON.stringify(ipData));
-                    document.body.innerHTML = '<h2>✅ IP отправлен в Telegram!</h2><p>' + data.ip + '</p><p>Проверьте чат бота</p>';
-                } catch (error) {
-                    document.body.innerHTML = '<h2>❌ Ошибка отправки: ' + error.message + '</h2>';
-                }
-                
-                // Закрываем через 3 секунды
-                setTimeout(() => {
-                    try {
-                        tg.close();
-                    } catch (error) {
-                        console.log('Ошибка закрытия:', error);
-                    }
-                }, 3000);
-            })
-            .catch(error => {
-                document.body.innerHTML = '<h2>❌ Ошибка получения IP: ' + error.message + '</h2>';
-                document.getElementById('debug').innerHTML += '<p>Ошибка: ' + error.message + '</p>';
-            });
+        document.getElementById('status').innerHTML = 'WebApp готов!';
+        console.log('WebApp инициализирован:', tg);
+        
+        function testSendData() {
+            try {
+                tg.sendData('{"test": "webapp_works"}');
+                document.getElementById('status').innerHTML = 'Данные отправлены!';
+                console.log('sendData вызван');
+            } catch (error) {
+                document.getElementById('status').innerHTML = 'Ошибка: ' + error.message;
+                console.error('Ошибка sendData:', error);
+            }
+        }
+        
+        function testIP() {
+            fetch('https://api.ipify.org?format=json')
+                .then(r => r.json())
+                .then(data => {
+                    const testData = {
+                        ip: data.ip,
+                        test: "real_ip_data"
+                    };
+                    tg.sendData(JSON.stringify(testData));
+                    document.getElementById('status').innerHTML = 'IP отправлен: ' + data.ip;
+                })
+                .catch(error => {
+                    document.getElementById('status').innerHTML = 'Ошибка IP: ' + error.message;
+                });
+        }
     </script>
 </body>
 </html>
