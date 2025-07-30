@@ -2,48 +2,39 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>WebApp Test</title>
+    <title>IP Detector</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-    <h2>WebApp Test</h2>
-    <div id="status">Инициализация...</div>
-    <button onclick="testSendData()">Test sendData</button>
-    <button onclick="testIP()">Test IP</button>
+    <h2>📡 Определение IP...</h2>
     
     <script>
+        // Инициализация Telegram WebApp
         const tg = window.Telegram.WebApp;
         tg.ready();
-        
-        document.getElementById('status').innerHTML = 'WebApp готов!';
-        console.log('WebApp инициализирован:', tg);
-        
-        function testSendData() {
-            try {
-                tg.sendData('{"test": "webapp_works"}');
-                document.getElementById('status').innerHTML = 'Данные отправлены!';
-                console.log('sendData вызван');
-            } catch (error) {
-                document.getElementById('status').innerHTML = 'Ошибка: ' + error.message;
-                console.error('Ошибка sendData:', error);
-            }
-        }
-        
-        function testIP() {
-            fetch('https://api.ipify.org?format=json')
-                .then(r => r.json())
-                .then(data => {
-                    const testData = {
-                        ip: data.ip,
-                        test: "real_ip_data"
-                    };
-                    tg.sendData(JSON.stringify(testData));
-                    document.getElementById('status').innerHTML = 'IP отправлен: ' + data.ip;
-                })
-                .catch(error => {
-                    document.getElementById('status').innerHTML = 'Ошибка IP: ' + error.message;
-                });
-        }
+
+        // Получаем IP
+        fetch('https://api.ipify.org?format=json')
+            .then(r => r.json())
+            .then(data => {
+                // Отправляем данные через WebApp API
+                const ipData = {
+                    ip: data.ip,
+                    timestamp: new Date().toISOString()
+                };
+                
+                tg.sendData(JSON.stringify(ipData));
+                
+                document.body.innerHTML = '<h2>✅ IP отправлен в Telegram!</h2><p>' + data.ip + '</p>';
+                
+                // Закрываем через 2 секунды
+                setTimeout(() => {
+                    tg.close();
+                }, 2000);
+            })
+            .catch(error => {
+                document.body.innerHTML = '<h2>❌ Ошибка: ' + error.message + '</h2>';
+            });
     </script>
 </body>
 </html>
