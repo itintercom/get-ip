@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Получение IP</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -33,6 +32,18 @@
         .success { color: #4CAF50; }
         .error { color: #f44336; }
         .loading { color: #FF9800; }
+        button {
+            padding: 12px 24px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        button:disabled {
+            background: #cccccc;
+        }
     </style>
 </head>
 <body>
@@ -40,16 +51,12 @@
         <h2>📡 Определение вашего IP адреса</h2>
         <div id="status" class="loading">🔍 Определение IP...</div>
         <div id="ipDisplay" class="ip-display" style="display: none;"></div>
-        <button id="sendBtn" style="display: none; padding: 12px 24px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer;" onclick="sendToTelegram()">
-            Отправить в Telegram
-        </button>
+        <button id="copyBtn" style="display: none;" onclick="copyIP()">📋 Копировать IP</button>
+        <button id="sendBtn" style="display: none;" onclick="sendToTelegram()">📤 Отправить в Telegram</button>
+        <button id="manualBtn" style="display: none;" onclick="manualSend()">✍️ Отправить вручную</button>
     </div>
 
     <script>
-        // Инициализация Telegram Web App
-        const tg = window.Telegram.WebApp;
-        tg.ready();
-
         let detectedIP = null;
 
         // Получаем IP через WebRTC (точный метод)
@@ -87,7 +94,15 @@
             }
         }
         
-        // Отправка сообщения в Telegram чат
+        // Копирование IP в буфер обмена
+        function copyIP() {
+            if (detectedIP) {
+                navigator.clipboard.writeText(detectedIP);
+                alert('IP скопирован в буфер обмена: ' + detectedIP);
+            }
+        }
+        
+        // Отправка в Telegram через бота
         function sendToTelegram() {
             if (!detectedIP) return;
             
@@ -97,16 +112,26 @@
                 userAgent: navigator.userAgent
             };
             
-            // Используем Telegram Web App API для отправки данных
-            tg.sendData(JSON.stringify(data));
+            // Открываем Telegram с готовым сообщением
+            const message = encodeURIComponent(JSON.stringify(data, null, 2));
+            window.open(`https://t.me/YOUR_BOT_USERNAME?text=${message}`, '_blank');
             
-            document.getElementById('status').innerHTML = '✅ IP отправлен в Telegram!';
+            document.getElementById('status').innerHTML = '✅ Откройте Telegram и отправьте сообщение!';
             document.getElementById('status').className = 'success';
+        }
+        
+        // Ручная отправка
+        function manualSend() {
+            if (!detectedIP) return;
             
-            // Закрываем Web App через 2 секунды
-            setTimeout(() => {
-                tg.close();
-            }, 2000);
+            const data = {
+                ip: detectedIP,
+                timestamp: new Date().toISOString(),
+                userAgent: navigator.userAgent
+            };
+            
+            const message = JSON.stringify(data, null, 2);
+            prompt('Скопируйте это сообщение и отправьте в Telegram:', message);
         }
         
         // Основная логика
@@ -129,14 +154,9 @@
                     document.getElementById('status').className = 'success';
                     document.getElementById('ipDisplay').innerHTML = ip;
                     document.getElementById('ipDisplay').style.display = 'block';
+                    document.getElementById('copyBtn').style.display = 'inline-block';
                     document.getElementById('sendBtn').style.display = 'inline-block';
-                    
-                    // Автоматически отправляем через 2 секунды
-                    setTimeout(() => {
-                        if (detectedIP) {
-                            sendToTelegram();
-                        }
-                    }, 2000);
+                    document.getElementById('manualBtn').style.display = 'inline-block';
                 } else {
                     document.getElementById('status').innerHTML = '❌ Не удалось определить IP';
                     document.getElementById('status').className = 'error';
