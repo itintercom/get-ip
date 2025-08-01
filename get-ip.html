@@ -1,40 +1,67 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <title>IP Detector</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VPN IP</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+    body { 
+        font-family: Arial, sans-serif; 
+        text-align: center; 
+        margin-top: 40px; 
+        background-color: #f5f5f5;
+    }
+    h3 { color: #333; }
+    #result { font-size: 18px; margin: 20px 0; }
+    #status { color: #555; margin-top: 15px; }
+    button { 
+        padding: 12px 20px; 
+        font-size: 16px; 
+        margin-top: 20px; 
+        cursor: pointer; 
+        background-color: #2ea44f;
+        border: none;
+        color: white;
+        border-radius: 6px;
+    }
+</style>
 </head>
 <body>
-    <h2>📡 Определение IP...</h2>
-    
-    <script>
-        // Инициализация Telegram WebApp
-        const tg = window.Telegram.WebApp;
-        tg.ready();
+    <h3>Определение IP-адреса</h3>
+    <div id="result">⏳ Получаю IP...</div>
+    <button id="sendBtn" style="display:none;">📤 Отправить IP</button>
+    <div id="status"></div>
 
-        // Получаем IP
-        fetch('https://api.ipify.org?format=json')
-            .then(r => r.json())
-            .then(data => {
-                // Отправляем данные через WebApp API
-                const ipData = {
-                    ip: data.ip,
-                    timestamp: new Date().toISOString()
-                };
-                
-                tg.sendData(JSON.stringify(ipData));
-                
-                document.body.innerHTML = '<h2>✅ IP отправлен в Telegram!</h2><p>' + data.ip + '</p>';
-                
-                // Закрываем через 2 секунды
-                setTimeout(() => {
-                    tg.close();
-                }, 2000);
-            })
-            .catch(error => {
-                document.body.innerHTML = '<h2>❌ Ошибка: ' + error.message + '</h2>';
-            });
-    </script>
+<script>
+let ip = "";
+
+// Получаем внешний IP
+fetch('https://api.ipify.org?format=json')
+    .then(r => r.json())
+    .then(d => {
+        ip = d.ip;
+        document.getElementById('result').innerText = 'Ваш IP: ' + ip;
+        document.getElementById('sendBtn').style.display = "inline-block";
+    })
+    .catch(e => {
+        document.getElementById('result').innerText = 'Ошибка получения IP: ' + e;
+    });
+
+// Отправка IP боту через WebApp API
+document.getElementById('sendBtn').onclick = () => {
+    if (window.Telegram && Telegram.WebApp) {
+        document.getElementById('status').innerText = '📨 Отправка данных боту...';
+        try {
+            Telegram.WebApp.sendData(ip);
+            Telegram.WebApp.close();
+        } catch (err) {
+            document.getElementById('status').innerText = '❌ Ошибка: ' + err;
+        }
+    } else {
+        document.getElementById('status').innerText = '❌ Telegram API недоступен.';
+    }
+};
+</script>
 </body>
 </html>
