@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebApp sendData Test</title>
+    <!-- Используем последнюю версию SDK с параметром для обхода кэша -->
+    <script src="https://telegram.org/js/telegram-web-app.js?17"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 20px;
+            background-color: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+            margin: 0;
+        }
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: var(--tg-theme-button-color, #2481cc);
+            color: var(--tg-theme-button-text-color, #ffffff);
+        }
+        textarea {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-sizing: border-box;
+            min-height: 120px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>📡 Отправка данных через WebApp</h2>
+        
+        <label for="dataToSend">Введите данные для отправки:</label>
+        <textarea id="dataToSend" placeholder="Введите текст для отправки боту"></textarea>
+        
+        <button id="sendDataBtn">📤 Отправить данные боту (sendData)</button>
+        <button id="closeAppBtn">❌ Закрыть WebApp</button>
+        
+        <div id="status"></div>
+    </div>
+
+    <script>
+        (function() {
+            'use strict';
+            try {
+                // 1. Проверка наличия Telegram WebApp API
+                if (typeof window.Telegram === 'undefined' || typeof Telegram.WebApp === 'undefined') {
+                    const errorMsg = '❌ Ошибка: Это приложение должно быть открыто внутри Telegram!';
+                    console.error(errorMsg);
+                    document.body.innerHTML = `<div class="error">${errorMsg}</div>`;
+                    alert(errorMsg);
+                    return;
+                }
+
+                const webApp = Telegram.WebApp;
+
+                // 2. Инициализация WebApp (обязательно по документации)
+                webApp.ready();
+                console.log('✅ Telegram WebApp API инициализирован.');
+
+                // 3. Заполнение поля данными по умолчанию
+                document.getElementById('dataToSend').value = 
+                    `Привет из WebApp!\nВремя: ${new Date().toLocaleString()}\nПлатформа: ${navigator.userAgent}`;
+
+                // 4. Функция для отображения статуса
+                function showStatus(message, type = 'info') {
+                    const statusDiv = document.getElementById('status');
+                    statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+                }
+
+                // 5. Обработчик кнопки отправки
+                document.getElementById('sendDataBtn').addEventListener('click', function(e) {
+                    e.preventDefault(); // Предотвращаем стандартное поведение
+                    e.stopPropagation(); // Останавливаем всплытие события
+                    
+                    try {
+                        const data = document.getElementById('dataToSend').value.trim();
+                        
+                        // Валидация
+                        if (!data) {
+                            const msg = '⚠️ Введите данные для отправки!';
+                            showStatus(msg, 'error');
+                            console.warn(msg);
+                            return;
+                        }
+
+                        // Проверка длины (ограничение 4096 байт)
+                        if (data.length > 4096) {
+                            const msg = '⚠️ Данные слишком длинные (максимум 4096 символов)!';
+                            showStatus(msg, 'error');
+                            console.warn(msg);
+                            return;
+                        }
+
+                        console.log('📤 Подготовка к отправке данных:', data.length, 'символов');
+                        
+                        // 6. ОСНОВНОЙ ВЫЗОВ: отправка данных боту
+                        webApp.sendData(data);
+                        
+                        console.log('✅ Telegram.WebApp.sendData() вызван успешно.');
+                        const successMsg = '✅ Данные отправлены! Подтвердите отправку во всплывающем окне Telegram.';
+                        showStatus(successMsg, 'success');
+                        // alert(successMsg); // Можно использовать alert для дополнительного уведомления
+                        
+                    } catch (error) {
+                        console.error('❌ Ошибка при вызове sendData:', error);
+                        const errorMsg = `❌ Ошибка отправки: ${error.message}`;
+                        showStatus(errorMsg, 'error');
+                        alert(errorMsg); // Показываем пользователю
+                    }
+                });
+
+                // 7. Обработчик кнопки закрытия
+                document.getElementById('closeAppBtn').addEventListener('click', function() {
+                    webApp.close();
+                });
+
+                console.log('✅ WebApp полностью инициализирован и готов к работе.');
+
+            } catch (initError) {
+                console.error('❌ Критическая ошибка инициализации WebApp:', initError);
+                document.getElementById('status').innerHTML = 
+                    `<div class="error">❌ Критическая ошибка: ${initError.message}</div>`;
+            }
+        })();
+    </script>
+</body>
+</html>
