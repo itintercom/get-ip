@@ -1,97 +1,65 @@
-package main
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VPN IP v6</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+body { font-family: Arial, sans-serif; text-align:center; margin-top: 40px; }
+h2 { color: #444; }
+#result { font-size: 18px; margin: 20px 0; }
+button { padding: 10px 20px; font-size: 16px; margin-top: 20px; cursor:pointer; }
+#status { margin-top: 10px; color: #555; white-space: pre-line; }
+</style>
+</head>
+<body>
+    <h2>WebApp v6</h2>
+    <h3>Определение IP-адреса</h3>
+    <div id="result">⏳ Получаю IP...</div>
+    <button id="sendBtn" style="display:none;">📤 Отправить IP</button>
+    <div id="status"></div>
 
-import (
-    "encoding/json"
-    "fmt"
-    "io"
-    "log"
-    "net/http"
-    "strings"
-    "time"
-)
+<script>
+let ip = "";
 
-const (
-    BOT_TOKEN  = "<ВАШ_ТОКЕН>"
-    API_URL    = "http://127.0.0.1:8888/bot" + BOT_TOKEN + "/"
-    WEBAPP_URL = "https://itintercom.github.io/get-ip/get-ip-v5.html"
-)
+// Логируем запуск WebApp
+console.log("✅ [v6] WebApp JS инициализирован:", window.Telegram?.WebApp);
 
-type Update struct {
-    UpdateID int `json:"update_id"`
-    Message  *struct {
-        MessageID int64  `json:"message_id"`
-        Text      string `json:"text"`
-        Chat      struct {
-            ID int64 `json:"id"`
-        } `json:"chat"`
-        From struct {
-            ID       int64  `json:"id"`
-            Username string `json:"username"`
-        } `json:"from"`
-        WebAppData struct {
-            Data       string `json:"data"`
-            ButtonText string `json:"button_text"`
-        } `json:"web_app_data"`
-    } `json:"message"`
-}
+// Получение IP
+fetch('https://ipv4.icanhazip.com', {cache:'no-store'})
+  .then(r => r.text())
+  .then(d => {
+      ip = d.trim();
+      console.log("✅ [v6] Получен IP:", ip);
+      document.getElementById('result').innerText = 'Ваш IP: ' + ip;
+      document.getElementById('sendBtn').style.display = "inline-block";
+  })
+  .catch(e => {
+      console.error("❌ [v6] Ошибка получения IP:", e);
+      document.getElementById('result').innerText = 'Ошибка: ' + e;
+  });
 
-func postToTelegram(method, payload string) {
-    url := API_URL + method
-    resp, err := http.Post(url, "application/json", strings.NewReader(payload))
-    if err != nil {
-        log.Printf("Ошибка POST: %v", err)
-        return
+// Отправка данных
+document.getElementById('sendBtn').onclick = ()=>{
+    const status = document.getElementById('status');
+    if (window.Telegram && Telegram.WebApp) {
+        try {
+            alert("Отправка данных: " + ip);  // <-- Проверка вызова sendData
+            console.log("📨 [v6] Отправка данных в бота:", ip);
+            status.innerText = "📨 Отправка данных боту...";
+            Telegram.WebApp.sendData(ip);
+            status.innerText += "\n✅ Данные отправлены. Окно закроется...";
+            setTimeout(() => Telegram.WebApp.close(), 1000);
+        } catch (err) {
+            console.error("❌ [v6] Ошибка отправки:", err);
+            status.innerText = "❌ Ошибка отправки: "+err;
+        }
+    } else {
+        console.error("❌ [v6] Telegram API недоступен");
+        status.innerText = "❌ Telegram API недоступен.";
     }
-    defer resp.Body.Close()
-    body, _ := io.ReadAll(resp.Body)
-    log.Printf("📤 Ответ Telegram (%s): %s", method, string(body))
-}
-
-func webhookHandler(w http.ResponseWriter, r *http.Request) {
-    body, _ := io.ReadAll(r.Body)
-    log.Printf("📥 RAW Update: %s", string(body))
-
-    var upd Update
-    if err := json.Unmarshal(body, &upd); err != nil {
-        log.Printf("Ошибка парсинга: %v", err)
-        w.WriteHeader(http.StatusBadRequest)
-        return
-    }
-
-    if upd.Message == nil {
-        w.WriteHeader(http.StatusOK)
-        return
-    }
-
-    chatID := upd.Message.Chat.ID
-    text := strings.TrimSpace(upd.Message.Text)
-    data := upd.Message.WebAppData.Data
-
-    if text == "/start" {
-        urlWithVersion := fmt.Sprintf("%s?v=%d", WEBAPP_URL, time.Now().Unix())
-        payload := fmt.Sprintf(`{
-            "chat_id": %d,
-            "text": "Тест отправки данных из WebApp",
-            "reply_markup": {
-                "inline_keyboard": [[
-                    {"text": "🧪 Тест sendData", "web_app": {"url": "%s"}}
-                ]]
-            }
-        }`, chatID, urlWithVersion)
-        postToTelegram("sendMessage", payload)
-    }
-
-    if data != "" {
-        msg := fmt.Sprintf("✅ Получены данные из WebApp: %s", data)
-        postToTelegram("sendMessage", fmt.Sprintf(`{"chat_id":%d,"text":"%s"}`, chatID, msg))
-        log.Printf("✅ WebApp Data: %s", data)
-    }
-
-    w.WriteHeader(http.StatusOK)
-}
-
-func main() {
-    http.HandleFunc("/webhook", webhookHandler)
-    log.Println("🚀 Тестовый бот запущен на :8080/webhook")
-    log.Fatal(http.ListenAndServe(":8080", nil))
-}
+};
+</script>
+</body>
+</html>
