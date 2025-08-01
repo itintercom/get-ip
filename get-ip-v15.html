@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Корректный WebApp</title>
+    <!-- Используем последнюю версию SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js?17"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 20px;
+            background-color: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+            margin: 0;
+        }
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: var(--tg-theme-button-color, #2481cc);
+            color: var(--tg-theme-button-text-color, #ffffff);
+        }
+        textarea {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-sizing: border-box;
+            min-height: 120px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>📡 Telegram WebApp</h2>
+        
+        <div id="initDataInfo" class="info" style="display: none;"></div>
+        
+        <label>Данные для отправки:</label>
+        <textarea id="dataToSend" placeholder="Введите текст для отправки"></textarea>
+        
+        <button id="sendDataBtn">📤 Отправить через Telegram</button>
+        <button id="copyDataBtn">📋 Скопировать в буфер</button>
+        <button id="expandBtn">↕️ Расширить WebApp</button>
+        <button id="closeAppBtn">❌ Закрыть WebApp</button>
+        
+        <div id="status"></div>
+    </div>
+
+    <script>
+        // Обязательная инициализация по документации Telegram
+        (function() {
+            try {
+                // Проверяем доступность Telegram WebApp API
+                if (typeof window.Telegram === 'undefined' || typeof Telegram.WebApp === 'undefined') {
+                    document.getElementById('status').innerHTML = 
+                        '<div class="error">❌ Это приложение должно быть открыто внутри Telegram!</div>';
+                    alert('❌ Это приложение должно быть открыто внутри Telegram!');
+                    return;
+                }
+
+                // Инициализация WebApp
+                const webApp = Telegram.WebApp;
+                webApp.ready();
+                webApp.expand(); // Расширяем на весь экран по умолчанию
+
+                // Отображаем информацию о пользователе
+                const initDataInfo = document.getElementById('initDataInfo');
+                if (webApp.initData) {
+                    try {
+                        const user = webApp.initDataUnsafe.user;
+                        if (user) {
+                            initDataInfo.innerHTML = `
+                                <strong>WebApp открыт в Telegram</strong><br>
+                                Пользователь: ${user.first_name || ''} ${user.last_name || ''}<br>
+                                ID: ${user.id || 'N/A'}
+                            `;
+                            initDataInfo.style.display = 'block';
+                        }
+                    } catch (e) {
+                        console.error('Ошибка при парсинге initData:', e);
+                    }
+                }
+
+                // Автозаполнение данных
+                document.getElementById('dataToSend').value = 
+                    `Данные из WebApp\nВремя: ${new Date().toLocaleString()}\nПлатформа: ${navigator.platform}`;
+
+                // Функция для отображения статуса
+                function showStatus(message, type = 'info') {
+                    const statusDiv = document.getElementById('status');
+                    statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+                }
+
+                // Отправка через sendData() - строго по документации
+                document.getElementById('sendDataBtn').addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    try {
+                        const data = document.getElementById('dataToSend').value.trim();
+                        if (!data) {
+                            showStatus('⚠️ Введите данные для отправки!', 'error');
+                            return;
+                        }
+
+                        // Проверка максимальной длины (4096 символов по документации)
+                        if (data.length > 4096) {
+                            showStatus('⚠️ Данные слишком длинные (максимум 4096 символов)!', 'error');
+                            return;
+                        }
+
+                        console.log('📤 Подготовка к отправке данных:', data.length, 'символов');
+                        
+                        // Используем строгий подход из документации
+                        webApp.sendData(data);
+                        
+                        console.log('✅ sendData() вызван успешно');
+                        showStatus('✅ Данные отправлены! Подтвердите отправку во всплывающем окне Telegram.', 'success');
+                        
+                    } catch (error) {
+                        console.error('❌ Ошибка sendData:', error);
+                        showStatus('❌ Ошибка отправки: ' + error.message, 'error');
+                        alert('Ошибка: ' + error.message);
+                    }
+                });
+
+                // Копирование в буфер обмена
+                document.getElementById('copyDataBtn').addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const data = document.getElementById('dataToSend').value.trim();
+                    if (!data) {
+                        showStatus('⚠️ Нет данных для копирования!', 'error');
+                        return;
+                    }
+                    
+                    navigator.clipboard.writeText(data).then(function() {
+                        showStatus('✅ Данные скопированы! Вставьте их в чат с ботом.', 'success');
+                    }).catch(function(err) {
+                        showStatus('❌ Ошибка копирования: ' + err, 'error');
+                    });
+                });
+
+                // Расширение WebApp
+                document.getElementById('expandBtn').addEventListener('click', function() {
+                    if (webApp.isExpanded) {
+                        webApp.mainButton.hide();
+                        this.textContent = '↕️ Расширить WebApp';
+                    } else {
+                        webApp.expand();
+                        this.textContent = '↕️ Свернуть WebApp';
+                    }
+                });
+
+                // Закрытие WebApp
+                document.getElementById('closeAppBtn').addEventListener('click', function() {
+                    webApp.close();
+                });
+
+                // Обработка ошибок WebApp
+                webApp.onEvent('viewportChanged', function() {
+                    console.log('Viewport changed');
+                });
+
+                console.log('✅ WebApp инициализирован корректно');
+
+            } catch (error) {
+                console.error('❌ Критическая ошибка инициализации:', error);
+                if (document.getElementById('status')) {
+                    document.getElementById('status').innerHTML = 
+                        '<div class="error">❌ Критическая ошибка: ' + error.message + '</div>';
+                }
+            }
+        })();
+    </script>
+</body>
+</html>
