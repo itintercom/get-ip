@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>VPN IP v7</title>
+<title>VPN IP v8</title>
 <style>
     body { font-family: Arial, sans-serif; text-align:center; margin-top: 40px; background-color: #f8f9fa; }
     h2 { color: #444; }
@@ -11,44 +11,67 @@
     button { padding: 12px 24px; font-size: 16px; margin-top: 20px; cursor:pointer; border:none; border-radius:5px; background-color:#007bff; color:#fff; }
     button:hover { background-color:#0056b3; }
     #status { margin-top: 15px; color: #333; white-space: pre-line; }
+    a { display:block; margin-top:10px; color:#007bff; text-decoration:none; }
+    a:hover { text-decoration:underline; }
 </style>
 </head>
 <body>
-    <h2>WebApp v7</h2>
+    <h2>WebApp v8</h2>
     <h3>Определение IP-адреса</h3>
     <div id="result">⏳ Получаю IP...</div>
     <button id="sendBtn" style="display:none;">📤 Отправить IP</button>
     <div id="status"></div>
+    <a id="manualLink" href="#" style="display:none;">🔗 Открыть бота вручную</a>
 
 <script>
 let ip = "";
 const botname = "intercomIPbot"; // 👈 Замените на имя вашего бота
 
-// Получение публичного IP
+// Получение IP
 fetch('https://ipv4.icanhazip.com', {cache:'no-store'})
   .then(r => r.text())
   .then(d => {
       ip = d.trim();
-      console.log("✅ [v7] Получен IP:", ip);
       document.getElementById('result').innerText = 'Ваш IP: ' + ip;
       document.getElementById('sendBtn').style.display = "inline-block";
   })
   .catch(e => {
-      console.error("❌ [v7] Ошибка получения IP:", e);
       document.getElementById('result').innerText = 'Ошибка: ' + e;
   });
 
-// Отправка IP через deep-link
+// Отправка IP
 document.getElementById('sendBtn').onclick = ()=>{
     const status = document.getElementById('status');
+    const manualLink = document.getElementById('manualLink');
     if (!ip) {
         status.innerText = "❌ IP-адрес не определён";
         return;
     }
     status.innerText = "📨 Перенаправление в Telegram бота...";
-    const link = `https://t.me/${botname}?start=sendip_${ip}`;
-    console.log("🔗 [v7] Переход по ссылке:", link);
-    window.location.href = link;
+    
+    const linkTG = `tg://resolve?domain=${botname}&start=sendip_${ip}`;
+    const linkWeb = `https://t.me/${botname}?start=sendip_${ip}`;
+    
+    // Попытка открыть напрямую Telegram
+    let redirected = false;
+    try {
+        window.location.href = linkTG;
+        redirected = true;
+    } catch (e) {
+        console.log("⚠️ Прямой вызов Telegram не сработал, пробую web...");
+    }
+
+    // Fallback через 1 секунду
+    setTimeout(() => {
+        if (!redirected) {
+            window.location.href = linkWeb;
+        }
+    }, 1000);
+
+    // Ссылка для ручного открытия
+    manualLink.href = linkWeb;
+    manualLink.style.display = "block";
+    manualLink.innerText = "🔗 Если бот не открылся, нажмите здесь";
 };
 </script>
 </body>
