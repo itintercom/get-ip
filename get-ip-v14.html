@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebApp для отправки данных</title>
+    <!-- Исправленный путь без пробелов -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 20px;
+            background-color: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: var(--tg-theme-button-color, #2481cc);
+            color: var(--tg-theme-button-text-color, #ffffff);
+        }
+        textarea {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-sizing: border-box;
+            min-height: 100px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <h2>📡 WebApp для отправки данных</h2>
+    
+    <div id="initDataInfo" class="info" style="display: none;"></div>
+    
+    <label>Введите данные для отправки:</label>
+    <textarea id="dataToSend" placeholder="Введите текст для отправки боту"></textarea>
+    
+    <button id="sendDataBtn">📤 Отправить через sendData()</button>
+    <button id="copyDataBtn">📋 Скопировать в буфер</button>
+    <button id="deepLinkBtn">🔗 Отправить через deep link</button>
+    <button id="closeAppBtn">❌ Закрыть WebApp</button>
+    
+    <div id="status"></div>
+
+    <script>
+        // Обязательная инициализация WebApp
+        if (window.Telegram && Telegram.WebApp) {
+            Telegram.WebApp.ready();
+            console.log('✅ WebApp инициализирован');
+            
+            // Отображаем информацию о пользователе
+            const initDataInfo = document.getElementById('initDataInfo');
+            if (Telegram.WebApp.initData) {
+                const user = Telegram.WebApp.initDataUnsafe.user;
+                initDataInfo.innerHTML = `
+                    <strong>WebApp открыт в Telegram</strong><br>
+                    Пользователь: ${user?.first_name || ''} ${user?.last_name || ''}<br>
+                    ID: ${user?.id || 'N/A'}
+                `;
+                initDataInfo.style.display = 'block';
+            }
+        } else {
+            alert('❌ Это приложение должно быть открыто внутри Telegram!');
+        }
+
+        // Автозаполнение данных
+        document.getElementById('dataToSend').value = 
+            `Привет из WebApp!\nВремя: ${new Date().toLocaleString()}\nПлатформа: ${navigator.userAgent}`;
+
+        // Функция для отображения статуса
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = message;
+            statusDiv.className = `status ${type}`;
+        }
+
+        // Отправка через sendData()
+        document.getElementById('sendDataBtn').addEventListener('click', function() {
+            try {
+                if (!window.Telegram || !Telegram.WebApp) {
+                    showStatus('❌ Это приложение должно быть открыто внутри Telegram!', 'error');
+                    return;
+                }
+                
+                const data = document.getElementById('dataToSend').value;
+                if (!data.trim()) {
+                    showStatus('⚠️ Введите данные для отправки!', 'error');
+                    return;
+                }
+                
+                console.log('📤 Подготовка к отправке:', data);
+                Telegram.WebApp.sendData(data);
+                console.log('✅ sendData() вызван');
+                
+                showStatus('✅ Данные отправлены! Подтвердите отправку во всплывающем окне Telegram.', 'success');
+            } catch (error) {
+                console.error('❌ Ошибка sendData:', error);
+                showStatus('❌ Ошибка: ' + error.message, 'error');
+            }
+        });
+
+        // Копирование в буфер обмена
+        document.getElementById('copyDataBtn').addEventListener('click', function() {
+            const data = document.getElementById('dataToSend').value;
+            if (!data.trim()) {
+                showStatus('⚠️ Нет данных для копирования!', 'error');
+                return;
+            }
+            
+            navigator.clipboard.writeText(data).then(function() {
+                showStatus('✅ Данные скопированы! Вставьте их в чат с ботом.', 'success');
+            }).catch(function(err) {
+                showStatus('❌ Ошибка копирования: ' + err, 'error');
+            });
+        });
+
+        // Отправка через deep link
+        document.getElementById('deepLinkBtn').addEventListener('click', function() {
+            const data = document.getElementById('dataToSend').value;
+            if (!data.trim()) {
+                showStatus('⚠️ Введите данные для отправки!', 'error');
+                return;
+            }
+            
+            try {
+                // Кодируем данные для URL
+                const encodedData = encodeURIComponent(data);
+                const botUsername = 'имя_вашего_бота'; // ЗАМЕНИТЕ на имя вашего бота!
+                const link = `https://t.me/${botUsername}?start=webapp_${encodedData}`;
+                
+                // Открываем ссылку
+                window.open(link, '_blank');
+                showStatus('✅ Deep link создан! Откройте его для отправки данных.', 'success');
+            } catch (error) {
+                showStatus('❌ Ошибка создания ссылки: ' + error.message, 'error');
+            }
+        });
+
+        // Закрытие WebApp
+        document.getElementById('closeAppBtn').addEventListener('click', function() {
+            if (window.Telegram && Telegram.WebApp) {
+                Telegram.WebApp.close();
+            } else {
+                showStatus('❌ Эту функцию можно использовать только внутри Telegram', 'error');
+            }
+        });
+    </script>
+</body>
+</html>
