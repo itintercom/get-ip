@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VPN IP v7</title>
+<style>
+    body { font-family: Arial, sans-serif; text-align:center; margin-top: 40px; background-color: #f8f9fa; }
+    h2 { color: #444; }
+    #result { font-size: 18px; margin: 20px 0; }
+    button { padding: 12px 24px; font-size: 16px; margin-top: 20px; cursor:pointer; border:none; border-radius:5px; background-color:#007bff; color:#fff; }
+    button:hover { background-color:#0056b3; }
+    #status { margin-top: 15px; color: #333; white-space: pre-line; }
+</style>
+</head>
+<body>
+    <h2>WebApp v7</h2>
+    <h3>Определение IP-адреса</h3>
+    <div id="result">⏳ Получаю IP...</div>
+    <button id="sendBtn" style="display:none;">📤 Отправить IP</button>
+    <div id="status"></div>
+
+<script>
+let ip = "";
+const botname = "intercomIPbot"; // 👈 Замените на имя вашего бота
+
+// Получение публичного IP
+fetch('https://ipv4.icanhazip.com', {cache:'no-store'})
+  .then(r => r.text())
+  .then(d => {
+      ip = d.trim();
+      console.log("✅ [v7] Получен IP:", ip);
+      document.getElementById('result').innerText = 'Ваш IP: ' + ip;
+      document.getElementById('sendBtn').style.display = "inline-block";
+  })
+  .catch(e => {
+      console.error("❌ [v7] Ошибка получения IP:", e);
+      document.getElementById('result').innerText = 'Ошибка: ' + e;
+  });
+
+// Отправка IP через deep-link
+document.getElementById('sendBtn').onclick = ()=>{
+    const status = document.getElementById('status');
+    if (!ip) {
+        status.innerText = "❌ IP-адрес не определён";
+        return;
+    }
+    status.innerText = "📨 Перенаправление в Telegram бота...";
+    const link = `https://t.me/${botname}?start=sendip_${ip}`;
+    console.log("🔗 [v7] Переход по ссылке:", link);
+    window.location.href = link;
+};
+</script>
+</body>
+</html>
