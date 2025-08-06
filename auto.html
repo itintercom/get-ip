@@ -1,55 +1,39 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="ru">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width" />
-  <title>IP Определение</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Определение IP</title>
   <script src="https://telegram.org/js/telegram-web-app.js?19"></script>
   <style>
-    html, body {
-      background: white;
-      color: #222;
+    body {
       font-family: sans-serif;
-      font-size: 16px;
       text-align: center;
       padding-top: 40px;
+      background: #f8f8f8;
     }
-
+    #status {
+      font-size: 18px;
+      margin-bottom: 20px;
+    }
     button {
-      margin-top: 20px;
-      padding: 10px 16px;
-      font-size: 16px;
-    }
-
-    #ip {
-      font-weight: bold;
-      font-size: 20px;
-      margin-top: 10px;
-      color: green;
-    }
-
-    .hidden {
       display: none;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
     }
   </style>
 </head>
-
 <body>
-  <div id="ip">⏳ Определение IP...</div>
-  <button id="sendBtn" class="hidden">📡 Отправить IP</button>
+  <div id="status">⏳ Определение IP...</div>
+  <button id="sendBtn">↩ Повторная отправка IP</button>
 
   <script>
     (function () {
-      const ipDisplay = document.getElementById("ip");
-      const sendBtn = document.getElementById("sendBtn");
+      'use strict';
 
-      if (!window.Telegram || !Telegram.WebApp) {
-        ipDisplay.textContent = "❌ Запустите из Telegram";
-        return;
-      }
-
-      Telegram.WebApp.ready();
+      const statusDiv = document.getElementById('status');
+      const sendBtn = document.getElementById('sendBtn');
 
       const ipSources = [
         'https://api.ipify.org?format=json',
@@ -58,50 +42,62 @@
         'https://ipapi.co/json/'
       ];
 
+      const isTelegram = typeof Telegram !== 'undefined' && Telegram.WebApp;
+      if (!isTelegram) {
+        statusDiv.textContent = '❌ Запустите из Telegram';
+        return;
+      }
+
+      const webApp = Telegram.WebApp;
+      webApp.ready();
+
       async function fetchIP(url) {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 5000);
+        const ctrl = new AbortController();
+        const timeout = setTimeout(() => ctrl.abort(), 5000);
         try {
-          const response = await fetch(url, { signal: controller.signal });
+          const res = await fetch(url, { signal: ctrl.signal });
           clearTimeout(timeout);
-          const data = await response.json();
-          if (data.ip) return data.ip;
-          throw new Error("Неверный ответ");
-        } catch (e) {
+          const json = await res.json();
+          if (json.ip) return json.ip;
+          throw new Error("IP not found");
+        } catch (err) {
           clearTimeout(timeout);
-          throw e;
+          throw err;
         }
       }
 
-      async function detectIP() {
+      async function determineIP() {
         for (const url of ipSources) {
           try {
             const ip = await fetchIP(url);
-            ipDisplay.innerHTML = `✅ IP: <span style="color:green">${ip}</span>`;
-            sendBtn.classList.remove("hidden");
-            sendBtn.onclick = () => sendIP(ip);
+            statusDiv.textContent = `✅ IP: ${ip}`;
+            sendBtn.style.display = 'inline-block';
+            sendBtn.onclick = () => send(ip);
+            send(ip); // автоматическая отправка
             return;
-          } catch (_) {}
+          } catch (e) {
+            console.warn(`Ошибка с ${url}:`, e.message);
+          }
         }
-        ipDisplay.textContent = "❌ IP не удалось определить";
+        statusDiv.textContent = '❌ Не удалось определить IP';
       }
 
-      function sendIP(ip) {
+      function send(ip) {
+        const payload = {
+          type: "ip_report",
+          ip: ip,
+          status: "ok"
+        };
         try {
-          Telegram.WebApp.sendData(JSON.stringify({
-            type: "ip_report",
-            ip: ip
-          }));
-          ipDisplay.textContent = "✅ IP отправлен";
-          sendBtn.classList.add("hidden");
+          Telegram.WebApp.sendData(JSON.stringify(payload));
+          sendBtn.style.display = 'inline-block'; // позволяем повторно
         } catch (e) {
-          ipDisplay.textContent = "❌ Ошибка отправки: " + e.message;
+          statusDiv.textContent = '❌ Ошибка отправки: ' + e.message;
         }
       }
 
-      detectIP();
+      determineIP();
     })();
   </script>
 </body>
-
 </html>
