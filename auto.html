@@ -1,154 +1,71 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="ru">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width">
-    <title>Определение IP</title>
-    <script src="https://telegram.org/js/telegram-web-app.js?17"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>IP Reporter</title>
+  <script src="https://telegram.org/js/telegram-web-app.js?18"></script>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 30px; }
+    #status { margin-top: 20px; }
+  </style>
 </head>
-
 <body>
-    <div id="status">Определение IP...</div>
-    <script>
-        (function () {
-            'use strict';
-            const statusDiv = document.getElementById('status');
-            const ERROR_PREFIX = "ERROR:"; // Префикс для сообщений об ошибках
+  <h2>Определение IP</h2>
+  <div id="status">⏳ Инициализация...</div>
 
-            // Список сервисов для получения IP.
-            const ipServices = [
-                'https://api.ipify.org?format=json', // Основной
-                'https://api.my-ip.io/ip.json',
-                'https://ipwho.is/?output=json',
-                'https://ipapi.co/json/'
-            ];
+  <script>
+    (async function() {
+      const statusDiv = document.getElementById("status");
+      const ERROR_PREFIX = "ERROR:";
 
-            try {
-                if (typeof window.Telegram === 'undefined' || typeof Telegram.WebApp === 'undefined') {
-                    // Если не в Telegram, просто показываем ошибку на странице
-                    statusDiv.textContent = 'Ошибка: Не в Telegram';
-                    return;
-                }
+      if (!window.Telegram || !Telegram.WebApp) {
+        statusDiv.textContent = "❌ Открывайте только через Telegram";
+        return;
+      }
 
-                const webApp = Telegram.WebApp;
-                webApp.ready();
+      Telegram.WebApp.ready();
+      const sendData = async (payload) => {
+        try {
+          Telegram.WebApp.sendData(JSON.stringify(payload));
+          statusDiv.textContent = payload.status === "ok"
+            ? `✅ IP ${payload.ip} отправлен боту`
+            : `❌ ${payload.error}`;
+        } catch (e) {
+          statusDiv.textContent = `❌ Ошибка отправки: ${e.message}`;
+        }
+      };
 
-                // Асинхронная функция для получения IP из конкретного URL
-                async function fetchIPFromService(url) {
-                    const parseResponse = async (response) => {
-                        if (!response.ok) {
-                            throw new Error(`HTTP ${response.status}`);
-                        }
-                        const data = await response.json();
+      const fetchIP = async (url) => {
+        const controller = new AbortController();
+        setTimeout(() => controller.abort(), 5000);
+        const res = await fetch(url, { signal: controller.signal });
+        if (!res.ok) throw new Error("Сервис недоступен");
+        const json = await res.json();
+        return json.ip || json.address || json.query;
+      };
 
-                        if (url.includes('ipify') || url.includes('my-ip.io') || url.includes('ipwho.is') || url.includes('ipapi.co')) {
-                            if (data.ip) return data.ip;
-                        }
-                        // Если не удалось извлечь IP из ответа
-                        throw new Error('Некорректный ответ от сервиса');
-                    };
-
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 5000); // Таймаут 5 секунд
-
-                    try {
-                        const response = await fetch(url, {
-                            signal: controller.signal
-                        });
-                        clearTimeout(timeoutId);
-                        return await parseResponse(response);
-                    } catch (error) {
-                        clearTimeout(timeoutId);
-                        if (error.name === 'AbortError') {
-                            throw new Error('Таймаут запроса (5с)');
-                        }
-                        throw error;
-                    }
-                }
-
-                // Основная асинхронная функция для получения IP
-                async function getIP() {
-                    statusDiv.textContent = 'Определение...';
-
-                    // Сначала пытаемся получить IP через основной сервис
-                    try {
-                        const primaryService = ipServices[0];
-                        statusDiv.textContent = `Попытка через ${new URL(primaryService).hostname}...`;
-                        const ip = await fetchIPFromService(primaryService);
-                        await sendResult(ip); // Отправляем IP
-                        return;
-                    } catch (primaryError) {
-                        console.warn(`Основной сервис ${ipServices[0]} недоступен:`, primaryError.message);
-                        statusDiv.textContent = `Основной сервис недоступен. Пробуем резервные...`;
-                        // Не возвращаемся, продолжаем с резервными
-                    }
-
-                    // Пробуем резервные сервисы
-                    for (let i = 1; i < ipServices.length; i++) {
-                        const service = ipServices[i];
-                        try {
-                            statusDiv.textContent = `Попытка через ${new URL(service).hostname}...`;
-                            const ip = await fetchIPFromService(service);
-                            await sendResult(ip); // Отправляем IP
-                            return;
-                        } catch (error) {
-                            console.warn(`Сервис ${service} недоступен:`, error.message);
-                            // Продолжаем цикл
-                        }
-                    }
-
-                    // Если все сервисы неудачны
-                    const errorMsg = 'Не удалось определить IP ни через один из сервисов.';
-                    console.error(errorMsg);
-                    await sendResult(null, errorMsg); // Отправляем сообщение об ошибке
-                }
-
-                // Функция для отправки результата (IP или ошибка) через Telegram WebApp
-                async function sendResult(ip, errorMsg = null) {
-                    let dataToSend;
-                    if (errorMsg) {
-                        statusDiv.textContent = `❌ ${errorMsg}`;
-                        dataToSend = ERROR_PREFIX + errorMsg; // Добавляем префикс
-                    } else {
-                        statusDiv.textContent = `✅ IP: ${ip}. Отправка...`;
-                        dataToSend = ip; // Отправляем сам IP
-                        // Небольшая задержка для отображения статуса перед отправкой
-                        await new Promise(resolve => setTimeout(resolve, 500));
-                    }
-
-                    try {
-                        webApp.sendData(dataToSend);
-                        if (errorMsg) {
-                            statusDiv.textContent = `❌ ${errorMsg} Сообщение отправлено боту.`;
-                        } else {
-                            statusDiv.textContent = `✅ IP ${ip} успешно отправлен боту!`;
-                        }
-                        console.log(`Отправлено боту: ${dataToSend}`);
-                    } catch (sendError) {
-                        const sendErrorMsg = `❌ Ошибка отправки данных боту: ${sendError.message}`;
-                        statusDiv.textContent = sendErrorMsg;
-                        console.error(sendErrorMsg);
-                    }
-                }
-
-                // Начинаем процесс получения IP
-                getIP();
-
-            } catch (initError) {
-                const initErrorMsg = `Критическая ошибка инициализации: ${initError.message}`;
-                statusDiv.textContent = initErrorMsg;
-                console.error(initErrorMsg);
-                // Даже при критической ошибке инициализации, попробуем сообщить об этом боту
-                if (typeof window.Telegram !== 'undefined' && typeof Telegram.WebApp !== 'undefined') {
-                     try {
-                        Telegram.WebApp.ready();
-                        Telegram.WebApp.sendData(ERROR_PREFIX + "Критическая ошибка в WebApp: " + initError.message);
-                    } catch (e) { /* Игнорируем ошибку отправки в этом случае */ }
-                }
-            }
-        })();
-    </script>
+      try {
+        statusDiv.textContent = "⏳ Получение IP...";
+        const ip = await fetchIP("https://api.ipify.org?format=json");
+        await sendData({
+          type: "ip_report",
+          ip,
+          timestamp: new Date().toISOString(),
+          userAgent: navigator.userAgent,
+          status: "ok"
+        });
+      } catch (e) {
+        await sendData({
+          type: "ip_report",
+          ip: null,
+          timestamp: new Date().toISOString(),
+          userAgent: navigator.userAgent,
+          status: "error",
+          error: e.message
+        });
+      }
+    })();
+  </script>
 </body>
-
 </html>
