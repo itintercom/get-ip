@@ -1,59 +1,107 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <meta charset="utf-8" />
-  <title>IP Reporter</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <script src="https://telegram.org/js/telegram-web-app.js?20"></script>
+  <meta name="viewport" content="width=device-width" />
+  <title>IP Определение</title>
+  <script src="https://telegram.org/js/telegram-web-app.js?19"></script>
+  <style>
+    html, body {
+      background: white;
+      color: #222;
+      font-family: sans-serif;
+      font-size: 16px;
+      text-align: center;
+      padding-top: 40px;
+    }
+
+    button {
+      margin-top: 20px;
+      padding: 10px 16px;
+      font-size: 16px;
+    }
+
+    #ip {
+      font-weight: bold;
+      font-size: 20px;
+      margin-top: 10px;
+      color: green;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
 </head>
+
 <body>
-<script>
-(async function () {
-  const Telegram = window.Telegram;
-  if (!Telegram || !Telegram.WebApp) return;
+  <div id="ip">⏳ Определение IP...</div>
+  <button id="sendBtn" class="hidden">📡 Отправить IP</button>
 
-  Telegram.WebApp.ready();
+  <script>
+    (function () {
+      const ipDisplay = document.getElementById("ip");
+      const sendBtn = document.getElementById("sendBtn");
 
-  const ipServices = [
-    'https://api.ipify.org?format=json',
-    'https://api.my-ip.io/ip.json',
-    'https://ipwho.is/?output=json',
-    'https://ipapi.co/json/'
-  ];
+      if (!window.Telegram || !Telegram.WebApp) {
+        ipDisplay.textContent = "❌ Запустите из Telegram";
+        return;
+      }
 
-  async function fetchIP(url) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
-    try {
-      const res = await fetch(url, { signal: controller.signal });
-      clearTimeout(timeout);
-      const data = await res.json();
-      return data.ip || null;
-    } catch {
-      clearTimeout(timeout);
-      return null;
-    }
-  }
+      Telegram.WebApp.ready();
 
-  for (const url of ipServices) {
-    const ip = await fetchIP(url);
-    if (ip) {
-      Telegram.WebApp.sendData(JSON.stringify({
-        type: 'ip_report',
-        ip: ip,
-        status: 'ok',
-        timestamp: new Date().toISOString()
-      }));
-      return;
-    }
-  }
+      const ipSources = [
+        'https://api.ipify.org?format=json',
+        'https://api.my-ip.io/ip.json',
+        'https://ipwho.is/?output=json',
+        'https://ipapi.co/json/'
+      ];
 
-  Telegram.WebApp.sendData(JSON.stringify({
-    type: 'ip_report',
-    status: 'fail',
-    timestamp: new Date().toISOString()
-  }));
-})();
-</script>
+      async function fetchIP(url) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+        try {
+          const response = await fetch(url, { signal: controller.signal });
+          clearTimeout(timeout);
+          const data = await response.json();
+          if (data.ip) return data.ip;
+          throw new Error("Неверный ответ");
+        } catch (e) {
+          clearTimeout(timeout);
+          throw e;
+        }
+      }
+
+      async function detectIP() {
+        for (const url of ipSources) {
+          try {
+            const ip = await fetchIP(url);
+            ipDisplay.innerHTML = `✅ IP: <span style="color:green">${ip}</span>`;
+            sendBtn.classList.remove("hidden");
+            sendBtn.onclick = () => sendIP(ip);
+            return;
+          } catch (_) {}
+        }
+        ipDisplay.textContent = "❌ IP не удалось определить";
+      }
+
+      function sendIP(ip) {
+        try {
+          Telegram.WebApp.sendData(JSON.stringify({
+            type: "ip_report",
+            ip: ip
+          }));
+          ipDisplay.textContent = "✅ IP отправлен";
+          sendBtn.classList.add("hidden");
+        } catch (e) {
+          ipDisplay.textContent = "❌ Ошибка отправки: " + e.message;
+        }
+      }
+
+      detectIP();
+    })();
+  </script>
 </body>
+
 </html>
